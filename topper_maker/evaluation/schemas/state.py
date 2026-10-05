@@ -147,6 +147,12 @@ class EvaluationResponse(BaseModel):
         "supervision was used so the UI can show candidate tabs alongside the supervisor result.",
     )
 
+    answer_crops: Dict[int, List[Dict[str, object]]] = Field(
+        default_factory=dict,
+        description="question id -> cropped images of the student's handwritten answer "
+        "([{page, image_b64}]). Best-effort; absent when the answer could not be located.",
+    )
+
     # Cost / token accounting -----------------------------------------------------
     cost_usd: Optional[float] = Field(
         None,

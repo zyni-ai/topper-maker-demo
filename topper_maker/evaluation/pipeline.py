@@ -45,6 +45,7 @@ from topper_maker.evaluation.scoring.marks_aggregator import (
     compute_total_marks,
 )
 from topper_maker.evaluation.scoring.supervisor import SupervisorArbitrator
+from topper_maker.evaluation.extraction.answer_crops import build_answer_crops
 from topper_maker.evaluation.storage.s3_uploader import S3Uploader
 
 logger = logging.getLogger(__name__)
@@ -267,6 +268,7 @@ class EvaluationPipeline:
             usage=usage_or_none(usage),
             supervision=supervision_record,
             candidate_responses=candidate_responses_map,
+            answer_crops=_safe_crops(extraction.pages, mapped.answers),
         )
         logger.info(
             "[%s] Done: %.1f/%.1f (%.1f%%), review=%s, reasons=%s",
@@ -378,6 +380,14 @@ class EvaluationPipeline:
         return list(
             await asyncio.gather(*(_run_one(m) for m in self.config.eval_models))
         )
+
+
+def _safe_crops(pages, answers):
+    try:
+        return build_answer_crops(pages, answers)
+    except Exception as exc:  # noqa: BLE001 - crops are a nicety, never fail the evaluation
+        logger.warning("Answer cropping failed (continuing): %s", exc)
+        return {}
 
 
 def _moderation_dict(moderation) -> dict:

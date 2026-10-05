@@ -5,6 +5,7 @@ Run:  .venv\\Scripts\\streamlit run app.py     (needs OPENROUTER_API_KEY in .env
 
 from __future__ import annotations
 
+import base64
 import html
 import io
 import os
@@ -32,6 +33,11 @@ os.environ["OPENROUTER_API_KEY"] = api_key  # the evaluation pipeline reads it f
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
 
 
+def m(x: float) -> str:
+    """Marks to 1 decimal place."""
+    return f"{x:.1f}"
+
+
 def to_pdf(title: str, body_html: str) -> bytes:
     """Render simple HTML to PDF bytes."""
     doc = pymupdf.Story(html=f"<h2>{html.escape(title)}</h2>{body_html}")
@@ -55,12 +61,12 @@ def paper_html(qs, with_rubric: bool) -> str:
             label = next(v[1] for v in qgen.QUESTION_TYPES.values() if v[0] == section)
             out.append(f"<h3>{label}</h3>")
         stmt = html.escape(q.question_statement).replace("\n", "<br>")
-        out.append(f"<p><b>Q{q.question_number}.</b> {stmt} <i>[{q.max_score:g}]</i></p>")
+        out.append(f"<p><b>Q{q.question_number}.</b> {stmt} <i>[{m(q.max_score)}]</i></p>")
         if with_rubric:
             out.append(f"<p><i>Model answer:</i> {html.escape(q.expected_answer or '')}</p><ul>")
             for p in q.rubric_points:
                 dep = f" (needs: {', '.join(p.depends_on)})" if p.depends_on else ""
-                out.append(f"<li>{html.escape(p.description)} - <b>{p.marks:g}</b>{dep}</li>")
+                out.append(f"<li>{html.escape(p.description)} - <b>{m(p.marks)}</b>{dep}</li>")
             out.append("</ul>")
     return "".join(out)
 
@@ -96,13 +102,13 @@ with tab1:
 
     qs = st.session_state.get("questions")
     if qs:
-        st.success(f"{len(qs)} questions · {sum(q.max_score for q in qs):g} marks")
+        st.success(f"{len(qs)} questions · {m(sum(q.max_score for q in qs))} marks")
         st.download_button("⬇ Download question paper (PDF)",
                            to_pdf(f"{subject} - Question Paper", paper_html(qs, False)),
                            "question_paper.pdf")
         for q in qs:
             st.markdown(f"**Q{q.question_number}.** {q.question_statement}  \n"
-                        f"*[{q.max_score:g} marks · {q.topic}]*")
+                        f"*[{m(q.max_score)} marks · {q.topic}]*")
     else:
         st.info("Upload material and click Generate.")
 
@@ -116,10 +122,10 @@ with tab2:
                            to_pdf(f"{st.session_state.subject} - Marking Rubric", paper_html(qs, True)),
                            "rubric.pdf")
         for q in qs:
-            with st.expander(f"Q{q.question_number} · {q.max_score:g} marks"):
+            with st.expander(f"Q{q.question_number} · {m(q.max_score)} marks"):
                 st.markdown(q.question_statement)
                 st.markdown(f"**Model answer:** {q.expected_answer}")
-                st.table([{"Point": p.description, "Marks": p.marks,
+                st.table([{"Point": p.description, "Marks": m(p.marks),
                            "Needs": ", ".join(p.depends_on) or "-"} for p in q.rubric_points])
 
 # ------------------------------------------------------------------ 3. evaluate
@@ -152,8 +158,8 @@ with tab3:
                 st.error(f"Answer sheet rejected: {res.rejection_reason}")
             else:
                 m1, m2 = st.columns(2)
-                m1.metric("Score", f"{res.total_marks:g} / {res.max_marks:g}")
-                m2.metric("Percentage", f"{res.percentage:.0f}%")
+                m1.metric("Score", f"{m(res.total_marks)} / {m(res.max_marks)}")
+                m2.metric("Percentage", f"{res.percentage:.1f}%")
                 if res.needs_human_review:
                     st.warning("Flagged for human review: " +
                                ", ".join(r.value for r in res.review_reasons))
@@ -161,11 +167,17 @@ with tab3:
                 for r in res.responses:
                     q = by_id[r.id]
                     icon = "✅" if r.is_correct else ("🟡" if r.score > 0 else "❌")
-                    with st.expander(f"{icon} Q{q.question_number} · {r.score:g}/{r.max_score:g}"):
+                    with st.expander(f"{icon} Q{q.question_number} · {m(r.score)}/{m(r.max_score)}"):
                         st.markdown(f"**Question:** {q.question_statement}")
-                        st.markdown(f"**Student answer:** {r.user_answer or '_not found_'}")
+                        crops = res.answer_crops.get(r.id, [])
+                        if crops:
+                            st.markdown("**Student's handwriting:**")
+                            for c in crops:
+                                st.image(base64.b64decode(c["image_b64"]),
+                                         caption=f"Page {c['page']}", use_container_width=True)
+                        st.markdown(f"**Transcribed answer:** {r.user_answer or '_not found_'}")
                         st.markdown(f"**Feedback:** {r.feedback}")
                         if r.rubric_breakdown:
                             st.table([{"Point": a.description,
-                                       "Awarded": f"{a.marks_awarded:g}/{a.marks_possible:g}",
+                                       "Awarded": f"{m(a.marks_awarded)}/{m(a.marks_possible)}",
                                        "Why": a.rationale} for a in r.rubric_breakdown])

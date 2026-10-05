@@ -73,6 +73,12 @@ class ExtractionResult:
     error: str | None = None
 
 
+def _downscale(image: Image.Image, max_width: int = 1600) -> Image.Image:
+    if image.width <= max_width:
+        return image
+    return image.resize((max_width, int(image.height * max_width / image.width)))
+
+
 class HTRContentExtractor:
     """Renders, quality-checks, and transcribes a PDF into the OCR-compatible shape."""
 
@@ -210,6 +216,13 @@ class HTRContentExtractor:
             "page_number": page.page_number,
             "text_content": text_content,
             "images": images,
+            # Kept for cropping each answer back out of the scan (see answer_crops.py).
+            "text_blocks": [
+                {"text": b.text, "bbox": b.bbox}
+                for b in htr_result.blocks
+                if b.region_type != RegionType.DIAGRAM and b.text.strip()
+            ],
+            "page_jpeg": pil_to_base64(_downscale(page.image), quality=85),
         }
         return page_dict, quality
 
