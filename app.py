@@ -6,6 +6,7 @@ Run:  .venv\\Scripts\\streamlit run app.py     (needs OPENROUTER_API_KEY in .env
 from __future__ import annotations
 
 import base64
+import hmac
 import html
 import io
 import re
@@ -24,6 +25,17 @@ from topper_maker.evaluation.schemas.state import EvaluationRequest
 load_dotenv()
 st.set_page_config(page_title="Exam Demo", page_icon="📝", layout="centered")
 st.title("📝 Question paper → Rubric → Evaluation")
+
+# Optional access gate: set APP_PASSWORD (env or Streamlit secret) to require it. Unset = open (local use).
+_pw = os.getenv("APP_PASSWORD")
+if _pw and not st.session_state.get("authed"):
+    entered = st.text_input("Access password", type="password")
+    if entered and hmac.compare_digest(entered, _pw):
+        st.session_state.authed = True
+        st.rerun()
+    elif entered:
+        st.error("Wrong password.")
+    st.stop()
 
 api_key = os.getenv("OPENROUTER_API_KEY") or st.sidebar.text_input(
     "OpenRouter API key", type="password", help="Or put it in .env as OPENROUTER_API_KEY")

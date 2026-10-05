@@ -9,7 +9,7 @@
    maps answers to questions and marks them against the generated rubric.
 
 ## Deploy (Streamlit Community Cloud)
-share.streamlit.io -> New app -> pick this repo, branch `main`, main file `app.py`. Under Advanced settings -> Secrets add `OPENROUTER_API_KEY = "sk-or-..."`.
+share.streamlit.io -> New app -> pick this repo, branch `main`, main file `app.py`. Under Advanced settings -> Secrets add `OPENROUTER_API_KEY = "sk-or-..."` and `APP_PASSWORD = "choose-one"` (the app asks for it before use).
 
 ## Run locally
 ```
