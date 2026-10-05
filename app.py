@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import html
 import io
+import re
 import os
 import tempfile
 
@@ -36,6 +37,21 @@ client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
 def m(x: float) -> str:
     """Marks to 1 decimal place."""
     return f"{x:.1f}"
+
+
+def plain(text: str) -> str:
+    """Make prose-in-LaTeX wrap.
+
+    The pipeline returns answers as LaTeX (text{...} inside $...$), which the browser lays
+    out as one unbreakable math line. If the answer is only prose, drop the LaTeX wrapper;
+    real maths (frac, ^, _ ...) is left untouched.
+    """
+    bs = chr(92)
+    t = re.sub(re.escape(bs) + r"text(?:bf|it)?\{([^{}]*)\}", r"\1", text)
+    t = t.replace(bs * 2, "\n\n")  # LaTeX line break -> paragraph break
+    if re.search(re.escape(bs) + r"[a-zA-Z]+|[\^_]", t):
+        return text
+    return t.replace("$", "").replace(bs + " ", " ")
 
 
 def to_pdf(title: str, body_html: str) -> bytes:
@@ -175,7 +191,7 @@ with tab3:
                             for c in crops:
                                 st.image(base64.b64decode(c["image_b64"]),
                                          caption=f"Page {c['page']}", use_container_width=True)
-                        st.markdown(f"**Transcribed answer:** {r.user_answer or '_not found_'}")
+                        st.markdown(f"**Transcribed answer:** {plain(r.user_answer) if r.user_answer else '_not found_'}")
                         st.markdown(f"**Feedback:** {r.feedback}")
                         if r.rubric_breakdown:
                             st.table([{"Point": a.description,
