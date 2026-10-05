@@ -8,7 +8,10 @@
    `topper_maker/` evaluation pipeline (from topper-maker-evaluation-pipeline) transcribes it,
    maps answers to questions and marks them against the generated rubric.
 
-## Run
+## Deploy (Streamlit Community Cloud)
+share.streamlit.io -> New app -> pick this repo, branch `main`, main file `app.py`. Under Advanced settings -> Secrets add `OPENROUTER_API_KEY = "sk-or-..."`.
+
+## Run locally
 ```
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
