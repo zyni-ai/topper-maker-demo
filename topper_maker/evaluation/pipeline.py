@@ -45,7 +45,7 @@ from topper_maker.evaluation.scoring.marks_aggregator import (
     compute_total_marks,
 )
 from topper_maker.evaluation.scoring.supervisor import SupervisorArbitrator
-from topper_maker.evaluation.extraction.answer_crops import build_answer_crops
+from topper_maker.evaluation.extraction.answer_crops import build_answer_crops, locate_answer_crops
 from topper_maker.evaluation.storage.s3_uploader import S3Uploader
 
 logger = logging.getLogger(__name__)
@@ -248,6 +248,9 @@ class EvaluationPipeline:
                 review_reasons.append(ReviewReason.SUPERVISOR_UNRESOLVED)
                 needs_review = True
 
+        with timer.stage("locate_answers"):
+            answer_crops = await self._locate_crops(request, extraction.pages, mapped.answers)
+
         response = EvaluationResponse(
             is_valid=True,
             responses=responses,
@@ -268,7 +271,7 @@ class EvaluationPipeline:
             usage=usage_or_none(usage),
             supervision=supervision_record,
             candidate_responses=candidate_responses_map,
-            answer_crops=_safe_crops(extraction.pages, mapped.answers),
+            answer_crops=answer_crops,
         )
         logger.info(
             "[%s] Done: %.1f/%.1f (%.1f%%), review=%s, reasons=%s",
@@ -280,6 +283,16 @@ class EvaluationPipeline:
             [r.value for r in response.review_reasons],
         )
         return response
+
+    async def _locate_crops(self, request, pages, answers):
+        """Crop each answer from the scan for the reviewer. Never fails the evaluation."""
+        try:
+            return await locate_answer_crops(
+                self._client, self.config, request.questions_list, pages, answers
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Answer locating failed (continuing): %s", exc)
+            return _safe_crops(pages, answers)
 
     # -- Review routing helpers --------------------------------------------------
 
