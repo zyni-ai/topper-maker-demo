@@ -22,3 +22,7 @@ Optional env: `GEN_MODEL`, `EMBED_MODEL` (generation); `HTR_MODEL`, `EVAL_TEXT_M
 
 Note: the generator is a standalone simplification of topper-maker-agents (which needs a Laravel
 backend). Answer sheets are student data – don't enable LangSmith tracing on real ones.
+
+## Deploy with Docker (Render / Railway / Fly)
+`Dockerfile` is included. Create a Web Service from this repo, runtime Docker, and set env vars
+`OPENROUTER_API_KEY` and `APP_PASSWORD`. The platform's `$PORT` is picked up automatically.
