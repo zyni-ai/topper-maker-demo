@@ -133,6 +133,9 @@ class EvaluationConfig:
     # the work, but emit a warning so the page is visible to a reviewer (issue #124).
     max_diagram_area_frac: float = 0.98
 
+    # Crop each student's handwritten answer from the scan for the results page. Off by default.
+    crop_answers: bool = False
+
     # --- Concurrency ------------------------------------------------------------
     max_concurrent_htr: int = 4       # parallel page transcriptions
     max_concurrent_eval: int = 4      # parallel question evaluations
@@ -196,6 +199,7 @@ class EvaluationConfig:
             supervisor_deviation_threshold=_get_float(
                 "SUPERVISOR_DEVIATION_THRESHOLD", cls.supervisor_deviation_threshold
             ),
+            crop_answers=_get_bool("ANSWER_CROPS", cls.crop_answers),
             use_mistral_ocr=_get_bool("USE_MISTRAL_OCR", cls.use_mistral_ocr),
             mistral_api_key=os.getenv("MISTRAL_API_KEY"),
             mistral_ocr_model=os.getenv("MISTRAL_OCR_MODEL", cls.mistral_ocr_model),

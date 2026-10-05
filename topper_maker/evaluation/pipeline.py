@@ -286,6 +286,8 @@ class EvaluationPipeline:
 
     async def _locate_crops(self, request, pages, answers):
         """Crop each answer from the scan for the reviewer. Never fails the evaluation."""
+        if not self.config.crop_answers:
+            return {}
         try:
             return await locate_answer_crops(
                 self._client, self.config, request.questions_list, pages, answers
